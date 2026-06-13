@@ -99,7 +99,7 @@
                 {data.user.nama.charAt(0).toUpperCase()}
               </div>
               <span
-                class="text-xs font-bold text-slate-700 max-w-[120px] truncate"
+                class="text-xs font-bold text-slate-700 max-w-30 truncate"
                 >{data.user.nama}</span
               >
               <div class="h-4 w-px bg-slate-200"></div>
@@ -562,7 +562,7 @@
       <!-- Right Column: Register Table -->
       <div class="lg:col-span-8">
         <div
-          class="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full min-h-[600px]"
+          class="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden flex flex-col h-full min-h-150"
         >
           <div
             class="px-6 py-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center"
