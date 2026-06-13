@@ -1,21 +1,29 @@
 import { db } from '$lib/server/db';
-import { letters, suratMasuk, jenisDokumen } from '$lib/server/db/schema';
+import { letters, suratMasuk, jenisDokumen, users, sessions } from '$lib/server/db/schema';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { eq, and, max, desc } from 'drizzle-orm';
 import { getRomanNumeral } from '$lib/utils';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+import { hashPassword } from '$lib/server/auth';
 
 export const load: PageServerLoad = async () => {
 	const allSuratKeluar = await db.select().from(letters).orderBy(desc(letters.tanggal), desc(letters.id));
 	const allSuratMasuk = await db.select().from(suratMasuk).orderBy(desc(suratMasuk.tanggalTerima), desc(suratMasuk.id));
 	const allJenis = await db.select().from(jenisDokumen).orderBy(jenisDokumen.nama);
+	const allUsers = await db.select({
+		id: users.id,
+		username: users.username,
+		nama: users.nama,
+		role: users.role
+	}).from(users).orderBy(users.nama);
 	
 	return {
 		suratKeluar: allSuratKeluar,
 		suratMasuk: allSuratMasuk,
-		jenisDokumen: allJenis
+		jenisDokumen: allJenis,
+		usersList: allUsers
 	};
 };
 
@@ -151,6 +159,67 @@ export const actions: Actions = {
 
 		await db.delete(jenisDokumen)
 			.where(eq(jenisDokumen.id, parseInt(idStr)));
+
+		return { success: true };
+	},
+	createUser: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { missing: true, message: 'Tidak diizinkan' });
+		}
+
+		const data = await request.formData();
+		const nama = data.get('nama')?.toString()?.trim();
+		const username = data.get('username')?.toString()?.trim();
+		const password = data.get('password')?.toString();
+		const role = data.get('role')?.toString() || 'admin';
+
+		if (!nama || !username || !password) {
+			return fail(400, { missing: true, message: 'Harap isi semua kolom' });
+		}
+
+		if (password.length < 6) {
+			return fail(400, { missing: true, message: 'Password minimal terdiri dari 6 karakter' });
+		}
+
+		// Check if username already exists
+		const existing = await db.select().from(users).where(eq(users.username, username)).limit(1);
+		if (existing.length > 0) {
+			return fail(400, { missing: true, message: 'Username sudah digunakan' });
+		}
+
+		const passwordHash = hashPassword(password);
+		await db.insert(users).values({
+			nama,
+			username,
+			passwordHash,
+			role
+		});
+
+		return { success: true };
+	},
+	deleteUser: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { missing: true, message: 'Tidak diizinkan' });
+		}
+
+		const data = await request.formData();
+		const idStr = data.get('id')?.toString();
+
+		if (!idStr) {
+			return fail(400, { missing: true, message: 'ID tidak ditemukan' });
+		}
+
+		const id = parseInt(idStr);
+
+		// Prevent self-deletion
+		if (id === locals.user.id) {
+			return fail(400, { missing: true, message: 'Anda tidak dapat menghapus akun Anda sendiri' });
+		}
+
+		// Delete sessions first
+		await db.delete(sessions).where(eq(sessions.userId, id));
+		// Delete user
+		await db.delete(users).where(eq(users.id, id));
 
 		return { success: true };
 	}

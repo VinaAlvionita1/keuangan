@@ -38,3 +38,18 @@ export const transaksi = mysqlTable('transaksi', {
 	tipe: varchar('tipe', { length: 10 }).notNull(), // 'masuk' atau 'keluar'
 	nominal: int('nominal').notNull()
 });
+
+export const users = mysqlTable('users', {
+	id: int('id').autoincrement().primaryKey(),
+	username: varchar('username', { length: 255 }).notNull().unique(),
+	passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+	nama: text('nama').notNull(),
+	role: varchar('role', { length: 50 }).default('admin').notNull()
+});
+
+export const sessions = mysqlTable('sessions', {
+	id: varchar('id', { length: 255 }).primaryKey(),
+	userId: int('user_id').notNull(),
+	expiresAt: timestamp('expires_at').notNull()
+});
+
